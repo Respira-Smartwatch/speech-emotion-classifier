@@ -1,1 +1,4 @@
-huggingsound
+samplerate
+soundfile
+torch
+transformers
