@@ -132,6 +132,5 @@ dmypy.json
 .DS_Store
 *.swp
 
-# Artifacts
-*.zip
-dataset/
+# Reference files
+ref/

@@ -1,4 +1,4 @@
-samplerate
-soundfile
+datasets
+librosa
 torch
-transformers
+torchaudio
