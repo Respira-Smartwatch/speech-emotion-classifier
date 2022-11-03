@@ -28,5 +28,5 @@ class FeatureExtractor:
         return emission[0]
 
     def decode(self, emission):
-        transcript = self.decoder(emission)
-        return transcript
+        indices, transcript = self.decoder(emission)
+        return indices, transcript
