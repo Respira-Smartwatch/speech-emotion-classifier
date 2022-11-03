@@ -3,11 +3,18 @@ import torch
 
 class EmotionClassifier(torch.nn.Module):
     def __init__(self):
+        torch.random.manual_seed(0xbeef)
         super(EmotionClassifier, self).__init__()
 
         self.fc = torch.nn.Sequential (
-            torch.nn.Linear(in_features=128, out_features=8),
-            torch.nn.Softmax(dim=1)
+            torch.nn.Linear(in_features=128, out_features=64),
+            torch.nn.BatchNorm1d(num_features=64),
+            torch.nn.SiLU(),
+
+            torch.nn.Linear(in_features=64, out_features=8),
+            torch.nn.ReLU(),
+
+            torch.nn.Softmax(dim=-1)
         )
 
         self.apply(self.__init_weights)
@@ -16,7 +23,7 @@ class EmotionClassifier(torch.nn.Module):
         if type(m) == torch.nn.Linear:
             torch.nn.init.xavier_normal_(m.weight)
 
-    def __accuracy_fn(logit, target, batch_size):
+    def __accuracy_fn(self, logit, target, batch_size):
         """ Obtain accuracy for training round """
         n_correct = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
         accuracy = 100.0 * n_correct/batch_size
@@ -25,18 +32,13 @@ class EmotionClassifier(torch.nn.Module):
     def forward(self, x):
         return self.fc(x)
 
-    def train(self, trainLoader, output_dir, learning_rate=1e-3,
-                loss_fn=torch.nn.CrossEntropyLoss(), n_epochs=10):
-        """
-        Update the weights of the Emotion classifier
-
-        features: [list]    List of (512x1) tensors of FeatureExtractor logits
-        labels: [list]      List of integers corresponding to one of eight
-                            emotion classes
-        """
+    def update_weights(self, trainLoader, output_dir, learning_rate=1e-3,
+                loss_fn=torch.nn.CrossEntropyLoss(), n_epochs=100):
+        # Make results dir
+        if not os.path.exists("results"):
+            os.makedirs("results")
 
         # Setup torch environment
-        torch.random.manual_seed(0xbeef)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = self.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -65,7 +67,7 @@ class EmotionClassifier(torch.nn.Module):
 
                 # Update metrics
                 running_loss += loss.detach().item()
-                accuracy += self.__accuracy_fn(logits, labels, batch_size=64)
+                accuracy += self.__accuracy_fn(logits, labels, batch_size=32)
 
             model.eval()
 
