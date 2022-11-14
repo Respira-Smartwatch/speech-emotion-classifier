@@ -1,5 +1,6 @@
 import os
 import torch
+import torchaudio
 
 class EmotionClassifier(torch.nn.Module):
     def __init__(self):
@@ -7,14 +8,11 @@ class EmotionClassifier(torch.nn.Module):
         super(EmotionClassifier, self).__init__()
 
         self.fc = torch.nn.Sequential (
-            torch.nn.Linear(in_features=128, out_features=64),
-            torch.nn.BatchNorm1d(num_features=64),
-            torch.nn.SiLU(),
-
-            torch.nn.Linear(in_features=64, out_features=8),
-            torch.nn.ReLU(),
-
-            torch.nn.Softmax(dim=-1)
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(1024, 1024),
+            torch.nn.Tanh(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(1024, 8)
         )
 
         self.apply(self.__init_weights)
@@ -25,15 +23,15 @@ class EmotionClassifier(torch.nn.Module):
 
     def __accuracy_fn(self, logit, target, batch_size):
         """ Obtain accuracy for training round """
-        n_correct = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
-        accuracy = 100.0 * n_correct/batch_size
+        corrects = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
+        accuracy = 100.0 * corrects/batch_size
         return accuracy.item()
 
     def forward(self, x):
         return self.fc(x)
 
-    def update_weights(self, trainLoader, output_dir, learning_rate=1e-3,
-                loss_fn=torch.nn.CrossEntropyLoss(), n_epochs=100):
+    def update_weights(self, trainLoader, output_dir, batch_size=1, learning_rate=1e-3,
+                loss_fn=torch.nn.CrossEntropyLoss(), n_epochs=10):
         # Make results dir
         if not os.path.exists("results"):
             os.makedirs("results")
@@ -67,14 +65,12 @@ class EmotionClassifier(torch.nn.Module):
 
                 # Update metrics
                 running_loss += loss.detach().item()
-                accuracy += self.__accuracy_fn(logits, labels, batch_size=32)
+                accuracy += self.__accuracy_fn(logits, labels, batch_size)
 
             model.eval()
 
             print("Epoch: %d | Loss: %.4f | Train Accuracy: %.2f" % (epoch, running_loss / i, accuracy/i))
 
-            output_filename = f"respira-emoc-{epoch}.bin"
-            output_path = os.path.join(output_dir, output_filename)
-            torch.save(model.state_dict, output_path)
-
-
+        output_filename = f"respira-emoc.bin"
+        output_path = os.path.join(output_dir, output_filename)
+        torch.save(self.state_dict(), output_path)
