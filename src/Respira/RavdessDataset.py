@@ -46,7 +46,7 @@ class RavdessDataset(Dataset):
             emission = feature_extractor(waveform, samplerate)
 
             # Collapse all timesteps into a single feature
-            feature = torch.mean(emission[0], 0)
+            feature = torch.mean(emission, dim=1)
 
             self.features.append(feature)
             self.labels.append(label)
