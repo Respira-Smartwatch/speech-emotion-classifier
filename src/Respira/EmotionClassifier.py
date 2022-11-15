@@ -3,7 +3,7 @@ import torch
 import torchaudio
 
 class EmotionClassifier(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, state_dict_path=None):
         torch.random.manual_seed(0xbeef)
         super(EmotionClassifier, self).__init__()
 
@@ -16,6 +16,12 @@ class EmotionClassifier(torch.nn.Module):
         )
 
         self.apply(self.__init_weights)
+
+        if state_dict_path:
+            state_dict = torch.load(state_dict_path)
+            self.load_state_dict(state_dict)
+            
+        self.eval()
 
     def __init_weights(self, m):
         if type(m) == torch.nn.Linear:

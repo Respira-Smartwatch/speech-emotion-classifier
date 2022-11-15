@@ -4,12 +4,8 @@ import torch, torchaudio
 
 if __name__ == "__main__":
     feature_extractor = FeatureExtractor()
-
-    model = EmotionClassifier()
-    state_dict = torch.load("results/respira-emoc.bin")
-    model.load_state_dict(state_dict)
-    model.eval()
-
+    model = EmotionClassifier("results/respira-emoc.bin")
+    
     audio_path = sys.argv[1]
     waveform, samplerate = torchaudio.load(audio_path)
     emission = feature_extractor(waveform, samplerate)
