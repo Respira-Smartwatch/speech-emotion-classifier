@@ -1,6 +1,9 @@
-from .GreedyCTCDecoder import GreedyCTCDecoder
 import torch
 import torchaudio
+
+# HACK: Bypass SSL verification to download PyTorch models on firewalled machines
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class FeatureExtractor:
     def __init__(self):
@@ -8,9 +11,7 @@ class FeatureExtractor:
         bundle = torchaudio.pipelines.WAV2VEC2_XLSR53
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = bundle.get_model().to(self.device)
-        self.decoder = GreedyCTCDecoder(torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H.get_labels())
-
+        self.encoder = bundle.get_model().to(self.device)
         self.sample_rate = bundle.sample_rate
 
     def __call__(self, torchaudio_data, sample_rate):
@@ -19,10 +20,7 @@ class FeatureExtractor:
 
         # Get logits
         with torch.inference_mode():
-            emission, _ = self.model(waveform)
+            waveform = waveform.to(self.device)
+            emission, _ = self.encoder(waveform)
         
         return emission
-
-    def decode(self, emission):
-        indices, transcript = self.decoder(emission)
-        return indices, transcript
