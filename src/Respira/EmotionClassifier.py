@@ -1,6 +1,5 @@
 import os
 import torch
-import torchaudio
 
 class EmotionClassifier(torch.nn.Module):
     def __init__(self, state_dict_path=None):
@@ -58,7 +57,7 @@ class EmotionClassifier(torch.nn.Module):
                 # Extract features/labels
                 features = features.to(device)
                 labels = labels.to(device)
-
+                
                 # Perform backpropagation
                 logits = model(features)
                 loss = loss_fn(logits, labels)

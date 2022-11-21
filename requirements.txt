@@ -1,5 +1,5 @@
-datasets
 librosa
-progress
+progressbar2
+requests
 torch
 torchaudio
