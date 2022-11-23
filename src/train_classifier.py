@@ -45,9 +45,9 @@ if __name__ == "__main__":
         print(f"Training on Fold {i}...")
 
         model = EmotionClassifier()
-        train, test, test_dict = dataset.cv_fold(i, batch_size=100, shuffle=True)
+        train, test, test_dict = dataset.cv_fold(i, batch_size=32, shuffle=True)
 
-        model.update_weights(train, results_dir, batch_size=100)
+        model.update_weights(train, results_dir, batch_size=32)
         accuracy = model.evaluate(test)
 
         accuracy_file.write(f"Fold {i}: {accuracy}%\n")
