@@ -76,6 +76,20 @@ class EmotionClassifier(torch.nn.Module):
 
             print("Epoch: %d | Loss: %.4f | Train Accuracy: %.2f" % (epoch, running_loss / i, accuracy/i))
 
-        output_filename = f"respira-emoc.bin"
-        output_path = os.path.join(output_dir, output_filename)
+    def save_model(self, output_path: str):
         torch.save(self.state_dict(), output_path)
+
+    def evaluate(self, train_loader):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = self.to(device)
+        accuracy = 0.0
+
+        for i, (features, labels) in enumerate(train_loader):
+            # Extract features/labels
+            features = features.to(device)
+            labels = labels.to(device)
+            logits = model(features)
+
+            accuracy += self.__accuracy_fn(logits, labels, 1)
+
+        return accuracy / i

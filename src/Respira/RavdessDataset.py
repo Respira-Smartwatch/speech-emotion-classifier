@@ -9,6 +9,17 @@ from zipfile import ZipFile
 
 from Respira import FeatureExtractor
 
+class RavdessDataloader(Dataset):
+    def __init__(self, aggregate_data: dict):
+        self.features = aggregate_data["features"]
+        self.labels = aggregate_data["labels"]
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        return self.features[idx], self.labels[idx]
+
 class RavdessDataset():
     def __init__(self, path: str = None):
         home_dir = os.path.expanduser("~")
@@ -107,18 +118,6 @@ class RavdessDataset():
         torch.save(aggregate_data, output_path)
 
     def dataloader(self, batch_size: int = 1, shuffle: bool = False) -> DataLoader:
-        # Define custom Dataloader class
-        class RavdessDataloader(Dataset):
-            def __init__(self, aggregate_data: dict):
-                self.features = aggregate_data["features"]
-                self.labels = aggregate_data["labels"]
-
-            def __len__(self):
-                return len(self.labels)
-
-            def __getitem__(self, idx):
-                return self.features[idx], self.labels[idx]
-
         # Compile aggregate data from all actors
         aggregate_data = {
             "features": [],
@@ -131,3 +130,39 @@ class RavdessDataset():
 
         # Build Dataloader
         return DataLoader(RavdessDataloader(aggregate_data), batch_size=batch_size, shuffle=shuffle)
+
+    def cv_fold(self, fold: int, batch_size: int = 1, shuffle: bool = False):
+        if fold == 0:
+            actors = [1, 4, 13, 14, 15]
+        elif fold == 1:
+            actors = [2, 5, 6, 12, 17]
+        elif fold == 2:
+            actors = [9, 10, 11, 18, 19]
+        elif fold == 3:
+            actors = [7, 16, 20, 22, 23]
+        else:
+            actors = [0, 3, 9, 21]
+
+        test_aggregate_data = {
+            "features": [],
+            "labels": []
+        }
+
+        train_aggregate_data = {
+            "features": [],
+            "labels": []
+        }
+
+        for i, actor in enumerate(self.actors):
+            if i in actors:
+                test_aggregate_data["features"] += actor["features"]
+                test_aggregate_data["labels"] += actor["labels"]
+            else:
+                train_aggregate_data["features"] += actor["features"]
+                train_aggregate_data["labels"] += actor["labels"]
+
+        train_dataloader = DataLoader(RavdessDataloader(train_aggregate_data), batch_size=batch_size, shuffle=shuffle) 
+        test_dataloader = DataLoader(RavdessDataloader(test_aggregate_data), batch_size=1, shuffle=shuffle)
+
+        return train_dataloader, test_dataloader, test_aggregate_data
+        
