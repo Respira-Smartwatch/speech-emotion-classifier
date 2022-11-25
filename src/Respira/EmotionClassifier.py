@@ -8,10 +8,11 @@ class EmotionClassifier(torch.nn.Module):
 
         self.fc = torch.nn.Sequential (
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(1024, 1024),
+            torch.nn.Linear(1024, 512),
             torch.nn.Tanh(),
+            
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(1024, 8)
+            torch.nn.Linear(512, 2)
         )
 
         self.apply(self.__init_weights)

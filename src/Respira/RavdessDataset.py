@@ -100,6 +100,13 @@ class RavdessDataset():
                 # Determine label from filename
                 label = int(audio.split("-")[2]) - 1
 
+                # Positive affect = 0
+                # Negative affect = 1
+                if label <=2 or label == 7:
+                    label = 0
+                else:
+                    label = 1
+                
                 features.append(feature)
                 labels.append(label)
 

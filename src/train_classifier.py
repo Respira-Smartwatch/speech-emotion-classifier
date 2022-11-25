@@ -18,7 +18,7 @@ def confusion_matrix(model, features, labels, out_path: str = "results/output.pn
         max_logit = logits.index(max(logits))
         y_pred.append(max_logit)
 
-    classes = ["neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprise"]
+    classes = ["positive", "negative"]
 
     # Build confusion matrix   
     cf_matrix = cm(labels, y_pred)

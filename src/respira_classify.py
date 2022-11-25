@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     logits = model(feature)[0].tolist()
     max_logit = logits.index(max(logits))
-    category = ["neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprise"][max_logit]
+    category = ["positive", "negative"][max_logit]
 
     print(logits)
     print(category)
