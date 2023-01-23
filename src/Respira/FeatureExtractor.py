@@ -26,3 +26,11 @@ class FeatureExtractor:
             emission, _ = self.encoder(waveform)
          
         return emission[0].clone().detach()
+
+    def from_samples(self, samples):
+        with torch.inference_mode():
+            waveform = samples.to(self.device)
+            emission, _ = self.encoder(waveform)
+
+        return emission[0].clone().detach()
+
