@@ -17,9 +17,14 @@ class EmotionClassifier(torch.nn.Module):
 
         self.apply(self.__init_weights)
 
+        # Setup device and load model parameters if given
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         if state_dict_path:
-            state_dict = torch.load(state_dict_path)
+            state_dict = torch.load(state_dict_path, map_location=self.device)
             self.load_state_dict(state_dict)
+        else:
+            self.apply(self.__init_weights)
             
         self.eval()
 
@@ -43,8 +48,7 @@ class EmotionClassifier(torch.nn.Module):
             os.makedirs("results")
 
         # Setup torch environment
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = self.to(device)
+        model = self.to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
         # Train
@@ -56,8 +60,8 @@ class EmotionClassifier(torch.nn.Module):
 
             for i, (features, labels) in enumerate(trainLoader):
                 # Extract features/labels
-                features = features.to(device)
-                labels = labels.to(device)
+                features = features.to(self.device)
+                labels = labels.to(self.device)
                 
                 # Perform backpropagation
                 logits = model(features)
