@@ -12,7 +12,7 @@ class EmotionClassifier(torch.nn.Module):
             torch.nn.Tanh(),
             
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(512, 2)
+            torch.nn.Linear(512, 8)
         )
 
         self.apply(self.__init_weights)
@@ -27,6 +27,7 @@ class EmotionClassifier(torch.nn.Module):
             self.apply(self.__init_weights)
             
         self.eval()
+        self.to(self.device)
 
     def __init_weights(self, m):
         if type(m) == torch.nn.Linear:

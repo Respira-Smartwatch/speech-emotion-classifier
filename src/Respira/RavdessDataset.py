@@ -88,24 +88,15 @@ class RavdessDataset():
             for audio in audios:
                 # Extract features for all timesteps then collapse into single feature vector
                 audio_path = os.path.join(actor_path, audio)
-                waveform, samplerate = torchaudio.load(audio_path)
-                waveform.to(device)
-                emission = feature_extractor(waveform, samplerate)
+                emission = feature_extractor(audio_path)
 
                 # The emission is a (batch_size x timesteps x 1024) list
                 # The following line collapses all of the timesteps into a
                 # (batch_size x 1024) list, where batch_size=1
-                feature = torch.mean(emission, dim=1)[0]
+                feature = torch.mean(emission, dim=0)
 
                 # Determine label from filename
                 label = int(audio.split("-")[2]) - 1
-
-                # Positive affect = 0
-                # Negative affect = 1
-                if label <=2 or label == 7:
-                    label = 0
-                else:
-                    label = 1
                 
                 features.append(feature)
                 labels.append(label)

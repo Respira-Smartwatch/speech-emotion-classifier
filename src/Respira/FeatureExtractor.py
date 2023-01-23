@@ -14,13 +14,15 @@ class FeatureExtractor:
         self.encoder = bundle.get_model().to(self.device)
         self.sample_rate = bundle.sample_rate
 
-    def __call__(self, torchaudio_data, sample_rate):
+    def __call__(self, audio_path):
+        waveform, sample_rate = torchaudio.load(audio_path)
+
         if sample_rate != self.sample_rate:
-            waveform = torchaudio.functional.resample(torchaudio_data, sample_rate, self.sample_rate)
+            waveform = torchaudio.functional.resample(waveform, sample_rate, self.sample_rate)
 
         # Get logits
         with torch.inference_mode():
             waveform = waveform.to(self.device)
             emission, _ = self.encoder(waveform)
-        
-        return emission
+         
+        return emission[0].clone().detach()
