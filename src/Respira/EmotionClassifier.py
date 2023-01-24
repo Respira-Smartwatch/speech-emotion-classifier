@@ -12,7 +12,8 @@ class EmotionClassifier(torch.nn.Module):
             torch.nn.Tanh(),
             
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(512, 8)
+            torch.nn.Linear(512, 8),
+            torch.nn.Softmax(dim=-1)
         )
 
         self.apply(self.__init_weights)
