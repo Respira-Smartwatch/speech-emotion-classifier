@@ -1,32 +1,16 @@
-import numpy as np
+import joblib
+import matplotlib.pyplot as plt
 import os
 
 from Respira import RavdessDataset, EmotionClassifier
+from sklearn.metrics import accuracy_score, ConfusionMatrixDisplay
+from sklearn.neural_network import MLPClassifier
 
-from sklearn.metrics import confusion_matrix as cm
-import seaborn as sn
-import torch
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 
-def confusion_matrix(model, features, labels, out_path: str = "results/output.png"):
-    y_pred = []
+def confusion_matrix(features, labels, out_path: str = "results/confusion_matrix.png"):
+    ConfusionMatrixDisplay.from_predictions(features, labels)
+    plt.savefig(out_path, format="png")
 
-    for feature in features:
-        logits = model(feature).tolist()
-        max_logit = logits.index(max(logits))
-        y_pred.append(max_logit)
-   
-    classes = ["neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprise"]
-
-    # Build confusion matrix   
-    cf_matrix = cm(labels, y_pred)
-    df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) * 8, index = [i for i in classes],
-                            columns = [i for i in classes])
-    plt.figure(figsize = (12,7))
-    sn.heatmap(df_cm, annot=True)
-    plt.savefig(out_path)
 
 if __name__ == "__main__":
     # Load dataset from disk (or create a new one)
@@ -36,27 +20,14 @@ if __name__ == "__main__":
     else:
         dataset = RavdessDataset("results/dataset.bin")
 
-    # Train model using cross-validation strategy
-    results_dir = f"results"
-    accuracy_path = os.path.join(results_dir, f"accuracy.txt")
-    accuracy_file = open(accuracy_path, "w")
+    x_train, x_test, y_train, y_test = dataset.train_test_split(test_size=0.20)
+    model = MLPClassifier(alpha=0.01, batch_size=256, epsilon=1e-08, hidden_layer_sizes=(300,), learning_rate='adaptive', max_iter=500)
+    model.fit(x_train, y_train)
 
-    for i in range(5):
-        print(f"Training on Fold {i}...")
+    y_pred = model.predict(x_test)
+    accuracy = accuracy_score(y_true=y_test, y_pred=y_pred)
+    print("Accuracy: {:.2f}%".format(accuracy * 100))
 
-        model = EmotionClassifier()
-        train, test, test_dict = dataset.cv_fold(i, batch_size=32, shuffle=True)
+    confusion_matrix(y_test, y_pred)
 
-        model.update_weights(train, results_dir, batch_size=32)
-        accuracy = model.evaluate(test)
-
-        accuracy_file.write(f"Fold {i}: {accuracy}%\n")
-
-        confusion_path = os.path.join(results_dir, f"cv{i}-confusion_matrix.png")
-        confusion_matrix(model, test_dict["features"], test_dict["labels"], confusion_path)
-
-        model_path = os.path.join(results_dir, f"cv{i}-model.bin")
-        model.save_model(model_path)
-
-        print(f"Test accuracy: {accuracy} %")
-        print()
+    joblib.dump(model, "results/respira-emoc.bin")

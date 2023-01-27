@@ -1,5 +1,6 @@
 librosa
-progressbar2
-requests
-torch
-torchaudio
+matplotlib
+numpy
+pyaudio
+sklearn
+soundfile
