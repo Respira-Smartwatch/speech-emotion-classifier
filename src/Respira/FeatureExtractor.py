@@ -1,7 +1,6 @@
-import soundfile
 import librosa
 import numpy as np
-from numpy import ndarray
+import soundfile
 
 
 class FeatureExtractor:

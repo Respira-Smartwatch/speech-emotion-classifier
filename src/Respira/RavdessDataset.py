@@ -8,7 +8,8 @@ from sklearn.model_selection import train_test_split
 
 from Respira import FeatureExtractor
 
-class RavdessDataset():
+
+class RavdessDataset:
     def __init__(self, path: str = None):
         home_dir = os.path.expanduser("~")
         self.cache_dir = os.path.join(home_dir, ".cache/respira/ravdess_extracted")
@@ -16,7 +17,7 @@ class RavdessDataset():
         self.actors = []
 
         # Load existing dataset if specified
-        if path != None:
+        if path is not None:
             print(f"Using existing dataset at {path}")
             data = np.load(path, allow_pickle=True).flat[0]
 
@@ -43,15 +44,15 @@ class RavdessDataset():
         temp = tempfile.NamedTemporaryFile()
         temp.write(response.content)
 
-        with ZipFile(temp.name, "r") as zip:
-            zip.extractall(self.cache_dir)
+        with ZipFile(temp.name, "r") as zipf:
+            zipf.extractall(self.cache_dir)
 
         temp.close()
 
     def __process_raw_data(self):
         # Gather all 24 actor directories
         actor_dirs = [x for x in os.listdir(self.cache_dir) if "Actor_" in x]
-        assert(len(actor_dirs) == 24)
+        assert (len(actor_dirs) == 24)
 
         # Display a progress bar, as process may take some time
         bar = progressbar.ProgressBar(max_value=1440).start()
@@ -62,7 +63,7 @@ class RavdessDataset():
             # Enter the actor directory and check that it contains 60 audio files
             actor_path = os.path.join(self.cache_dir, f"Actor_{i:02}")
             audios = os.listdir(actor_path)
-            assert(len(audios) == 60)
+            assert (len(audios) == 60)
 
             # For each audio file, extract Wav2Vec2 features and the label
             features = []
@@ -75,7 +76,7 @@ class RavdessDataset():
 
                 feature = np.hstack((emission["mfcc"], emission["chroma"], emission["mel"]))
                 label = int(audio.split("-")[2]) - 1
-                
+
                 features.append(feature)
                 labels.append(label)
 
@@ -90,7 +91,7 @@ class RavdessDataset():
 
         for i, actor in enumerate(self.actors):
             aggregate_data[f"actor{i}"] = actor
-        
+
         np.save(output_path, aggregate_data, allow_pickle=True)
 
     def cv_fold(self, fold: int, batch_size: int = 1, shuffle: bool = False):
