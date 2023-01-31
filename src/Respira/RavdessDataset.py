@@ -2,25 +2,14 @@ import os
 import progressbar
 import requests
 import tempfile
-import torch, torchaudio
-
-from torch.utils.data import Dataset, DataLoader
 from zipfile import ZipFile
+import numpy as np
+from sklearn.model_selection import train_test_split
 
 from Respira import FeatureExtractor
 
-class RavdessDataloader(Dataset):
-    def __init__(self, aggregate_data: dict):
-        self.features = aggregate_data["features"]
-        self.labels = aggregate_data["labels"]
 
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        return self.features[idx], self.labels[idx]
-
-class RavdessDataset():
+class RavdessDataset:
     def __init__(self, path: str = None):
         home_dir = os.path.expanduser("~")
         self.cache_dir = os.path.join(home_dir, ".cache/respira/ravdess_extracted")
@@ -28,9 +17,9 @@ class RavdessDataset():
         self.actors = []
 
         # Load existing dataset if specified
-        if path != None:
+        if path is not None:
             print(f"Using existing dataset at {path}")
-            data = torch.load(path)
+            data = np.load(path, allow_pickle=True).flat[0]
 
             for i in range(24):
                 actor_key = f"actor{i}"
@@ -55,31 +44,26 @@ class RavdessDataset():
         temp = tempfile.NamedTemporaryFile()
         temp.write(response.content)
 
-        with ZipFile(temp.name, "r") as zip:
-            zip.extractall(self.cache_dir)
+        with ZipFile(temp.name, "r") as zipf:
+            zipf.extractall(self.cache_dir)
 
         temp.close()
 
     def __process_raw_data(self):
         # Gather all 24 actor directories
-        actor_dirs = [dir for dir in os.listdir(self.cache_dir) if "Actor_" in dir]
-        assert(len(actor_dirs) == 24)
+        actor_dirs = [x for x in os.listdir(self.cache_dir) if "Actor_" in x]
+        assert (len(actor_dirs) == 24)
 
         # Display a progress bar, as process may take some time
-        #bar = Bar("Building dataset: ", max=24*60, suffix="%(percent).1f%% - %(eta_td)s")
         bar = progressbar.ProgressBar(max_value=1440).start()
         bar_idx = 0
-
-        # Instantiate FeatureExtractor and model to convert audio data to logits
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        feature_extractor = FeatureExtractor()
 
         # Extract and tag audio files from each actor, in order
         for i in range(1, len(actor_dirs) + 1):
             # Enter the actor directory and check that it contains 60 audio files
             actor_path = os.path.join(self.cache_dir, f"Actor_{i:02}")
             audios = os.listdir(actor_path)
-            assert(len(audios) == 60)
+            assert (len(audios) == 60)
 
             # For each audio file, extract Wav2Vec2 features and the label
             features = []
@@ -88,23 +72,18 @@ class RavdessDataset():
             for audio in audios:
                 # Extract features for all timesteps then collapse into single feature vector
                 audio_path = os.path.join(actor_path, audio)
-                emission = feature_extractor(audio_path)
+                emission = FeatureExtractor.from_path(audio_path)
 
-                # The emission is a (batch_size x timesteps x 1024) list
-                # The following line collapses all of the timesteps into a
-                # (batch_size x 1024) list, where batch_size=1
-                feature = torch.mean(emission, dim=0)
-
-                # Determine label from filename
+                feature = np.hstack((emission["mfcc"], emission["chroma"], emission["mel"]))
                 label = int(audio.split("-")[2]) - 1
-                
+
                 features.append(feature)
                 labels.append(label)
 
                 bar.update(bar_idx)
                 bar_idx += 1
 
-            self.actors.append({"features": features, "labels": labels})
+            self.actors.append({"features": list(features), "labels": list(labels)})
         bar.finish()
 
     def save_to_disk(self, output_path: str):
@@ -112,22 +91,8 @@ class RavdessDataset():
 
         for i, actor in enumerate(self.actors):
             aggregate_data[f"actor{i}"] = actor
-        
-        torch.save(aggregate_data, output_path)
 
-    def dataloader(self, batch_size: int = 1, shuffle: bool = False) -> DataLoader:
-        # Compile aggregate data from all actors
-        aggregate_data = {
-            "features": [],
-            "labels": []
-        }
-
-        for actor in self.actors:
-            aggregate_data["features"] += actor["features"]
-            aggregate_data["labels"] += actor["labels"]
-
-        # Build Dataloader
-        return DataLoader(RavdessDataloader(aggregate_data), batch_size=batch_size, shuffle=shuffle)
+        np.save(output_path, aggregate_data, allow_pickle=True)
 
     def cv_fold(self, fold: int, batch_size: int = 1, shuffle: bool = False):
         if fold == 0:
@@ -159,8 +124,24 @@ class RavdessDataset():
                 train_aggregate_data["features"] += actor["features"]
                 train_aggregate_data["labels"] += actor["labels"]
 
-        train_dataloader = DataLoader(RavdessDataloader(train_aggregate_data), batch_size=batch_size, shuffle=shuffle) 
-        test_dataloader = DataLoader(RavdessDataloader(test_aggregate_data), batch_size=1, shuffle=shuffle)
+        return train_aggregate_data, test_aggregate_data
 
-        return train_dataloader, test_dataloader, test_aggregate_data
-        
+    def train_test_split(self, test_size=0.2):
+        # Flatten features and labels
+        features = []
+        labels = []
+
+        for actor in self.actors:
+            features += actor["features"]
+            labels += actor["labels"]
+
+        # Only include relevant data
+        x = []
+        y = []
+
+        for i, label in enumerate(labels):
+            if label in [2, 3, 6, 7]:
+                x.append(features[i])
+                y.append(label)
+
+        return train_test_split(x, y, test_size=test_size, random_state=0xdeadbeef)

@@ -1,18 +1,18 @@
-from Respira import EmotionClassifier, FeatureExtractor
+import numpy as np
 import sys
 
+from Respira import EmotionClassifier, FeatureExtractor
+
 if __name__ == "__main__":
-    feature_extractor = FeatureExtractor()
     model = EmotionClassifier("results/respira-emoc.bin")
     
     audio_path = sys.argv[1]
-    feature = feature_extractor(audio_path)
+    emission = FeatureExtractor.from_path(audio_path)
+    emission = np.hstack((emission["mfcc"], emission["chroma"], emission["mel"]))
 
-    logits = model(feature)[0].tolist()
+    prediction, probabilities = model([emission])
 
-    max_logit = logits.index(max(logits))
-    category = ["neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprise"][max_logit]
+    category = ["neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprise"][prediction[0]]
+    probability = max(probabilities[0]) * 100
 
-    print(logits)
-    print(category)
-
+    print(f"{prediction} ({probability} %)")

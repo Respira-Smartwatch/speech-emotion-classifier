@@ -1,36 +1,35 @@
-import torch
-import torchaudio
+import librosa
+import numpy as np
+import soundfile
 
-# HACK: Bypass SSL verification to download PyTorch models on firewalled machines
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
 
 class FeatureExtractor:
-    def __init__(self):
-        torch.random.manual_seed(0xbeef)
-        bundle = torchaudio.pipelines.WAV2VEC2_XLSR53
+    @staticmethod
+    def from_samples(data, sample_rate):
+        result = {}
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.encoder = bundle.get_model().to(self.device)
-        self.sample_rate = bundle.sample_rate
+        # Extract cepstral coefficients
+        mfcc = librosa.feature.mfcc(y=data, sr=sample_rate, n_mfcc=40)
+        mfcc = np.mean(mfcc.T, axis=0)
+        result["mfcc"] = mfcc
 
-    def __call__(self, audio_path):
-        waveform, sample_rate = torchaudio.load(audio_path)
+        # Extract pitch
+        stft = np.abs(librosa.stft(data))
+        chroma = librosa.feature.chroma_stft(S=stft, sr=sample_rate)
+        chroma = np.mean(chroma.T, axis=0)
+        result["chroma"] = chroma
 
-        if sample_rate != self.sample_rate:
-            waveform = torchaudio.functional.resample(waveform, sample_rate, self.sample_rate)
+        # Extract mel spectrogram
+        mel = librosa.feature.melspectrogram(y=data, sr=sample_rate)
+        mel = np.mean(mel.T, axis=0)
+        result["mel"] = mel
 
-        # Get logits
-        with torch.inference_mode():
-            waveform = waveform.to(self.device)
-            emission, _ = self.encoder(waveform)
-         
-        return emission[0].clone().detach()
+        return result
 
-    def from_samples(self, samples):
-        with torch.inference_mode():
-            waveform = samples.to(self.device)
-            emission, _ = self.encoder(waveform)
+    @staticmethod
+    def from_path(audio_path):
+        # Load audio data and mix to mono
+        with soundfile.SoundFile(audio_path) as file:
+            data = librosa.load(path=file, sr=16000, mono=True)[0]
 
-        return emission[0].clone().detach()
-
+        return FeatureExtractor.from_samples(data, 16000)
