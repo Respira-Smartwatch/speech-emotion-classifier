@@ -3,7 +3,7 @@
 setup:
 	sudo apt update
 	sudo apt install -y python3-scipy 
-	pip3 install -r requirements.txt pip3 install -r requirements.txt 
+	pip3 install -r requirements.txt
 
 .PHONY: setup
 
