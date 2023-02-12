@@ -5,5 +5,5 @@ numpy
 progressbar2
 requests
 scikit-learn
-sklearn
 soundfile
+
