@@ -139,9 +139,18 @@ class RavdessDataset:
         x = []
         y = []
 
+        # Labels:
+        # 1=neutral
+        # 2=calm
+        # 3=happy
+        # 4=sad
+        # 5=angry
+        # 6=fearful
+        # 7=disgust
+        # 8=surprised
+
         for i, label in enumerate(labels):
-            if label in [2, 3, 6, 7]:
-                x.append(features[i])
-                y.append(label)
+            x.append(features[i])
+            y.append(label)
 
         return train_test_split(x, y, test_size=test_size, random_state=0xdeadbeef)
